@@ -54,7 +54,7 @@ This software is a Python-based GUI application (using Tkinter) for fitting elec
    - Finally, the candidate window with the lowest adjusted cost is selected and displayed—all in one click.
   
 4. **Update Parameter Function**
-   - We can now update all the initial values by the fitted values by clicking "Update Parameters"
+   - We can now update all the initial values by the fitted values by clicking "Update parameters"
    - The Auto-Freq also updates the initial values during iteration.
 
 ## Data Format
