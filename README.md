@@ -25,7 +25,7 @@ This software is a Python-based GUI application (using Tkinter) for fitting elec
    >     np.linalg.inv(Jacob.T.dot(Jacob)) * (np.matmul(np.transpose(finalOutput.fun), finalOutput.fun)) / (
    >     finalOutput.fun.shape[0] - self.finalParams.size))
    > ```
-   This approach fails when the Hessian (i.e. \(J^T J\)) is singular. We revised this part by using a try/except block to check for singularity. If the Hessian is singular, the code now uses the pseudo-inverse, allowing the process to proceed even if some parameter error estimates may be less reliable.
+   This approach fails when the Hessian (i.e. $\(J^T J\))% is singular. We revised this part by using a try/except block to check for singularity. If the Hessian is singular, the code now uses the pseudo-inverse, allowing the process to proceed even if some parameter error estimates may be less reliable.
    > **Revised Code Snippet:**
    > 
    > ```python
@@ -48,7 +48,7 @@ This software is a Python-based GUI application (using Tkinter) for fitting elec
    > estVars = np.diag(cov_matrix * sigma_squared)
    > self.standardDeviation = np.sqrt(estVars)
    > ```
-   This modification ensures that the least-squares fitting process can proceed even if %\(J^T J\)% is singular, with a proper warning to the user.
+   This modification ensures that the least-squares fitting process can proceed even if $\(J^T J\)$ is singular, with a proper warning to the user.
 
 4. **Auto Frequency-Window Function:**  
    We added an automated frequency-window selection routine. This function automatically searches for an optimal frequency range that minimizes the average percent standard error (SE) for the critical parameters (Rmem and Rcl).  
