@@ -57,18 +57,6 @@ This software is a Python-based GUI application (using Tkinter) for fitting elec
    - A penalty factor is applied to candidate windows that use too few data points (since reducing N tends to increase SE due to fewer degrees of freedom).
    - Finally, the candidate window with the lowest adjusted cost is selected and displayed—all in one click.
 
-## Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/HIshimmoo/OSIF-Revised.git
-   ```
-2. Install the required packages:
-   ```bash
-   pip install numpy scipy matplotlib openpyxl
-   ```
-   (Tkinter is included with most Python distributions.)
-
 ## Usage
 
 Run the application with:
