@@ -10,9 +10,7 @@ This software is a Python-based GUI application (using Tkinter) for fitting elec
 
 1. **Simplified Model (Neglect Lwire):**  
    In our EIS datasets no high-frequency inductive loop is observed. In the original OSIF model, the term  
-   $
-   L_{\text{wire}}(j\omega)^{\theta}
-   $
+   $L_{\text{wire}}(j\omega)^{\theta}$
    is included. We have removed this term (by setting \(L_{\text{wire}} = 0\) and the exponent \(\theta = 0\)) so that the fitting is not misled by non-existent inductive behavior and the progress is significantly faster.
 
 2. **Robust Error Estimation for Singular Matrices:**  
