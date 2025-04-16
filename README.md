@@ -73,8 +73,8 @@ python OSIF_Revised.py
 - Click Simulate to see if the initial guess is fine. Modifying the initial parameters till the simulated line gets close to your original data.
 - Click Fit to get the first Fit Values.
 - If the fisrt guess is good (SE% < 10%), you can click Update parameters and fit several more times.
-- If the first guess is bad, try to reset initla values until the SE% is acceptable.
-- If you want to get a better result, try the "Auto-Freq Window" button to automatically choose the optimal frequency window and then fit again.
+- If the first guess is bad, try to reset initial values until the SE% is tolerable.
+- If you want to get better results, try the "Auto-Freq window" button to automatically choose the optimal frequency window and then fit again.
 
 ## Citation
 
