@@ -61,7 +61,7 @@ This software is a Python-based GUI application (using Tkinter) for fitting elec
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/<your-username>/OSIF-Revised.git
+   git clone https://github.com/HIshimmoo/OSIF-Revised.git
    ```
 2. Install the required packages:
    ```bash
