@@ -1,7 +1,5 @@
 # OSIF_Revised
 
-# OSIF-Revised for Water Electrolysis MEA
-
 OSIF-Revised is a modified version of the [Open Source Impedance Fitter (OSIF)](https://github.com/NREL/OSIF) originally developed by NREL. This revision is customized for calculating the catalyst layer resistance (Rcl) for the Membrane Electrode Assembly (MEA) in water electrolysis applications. The main goals were to simplify the fitting model for our data and to enhance robustness during parameter error estimation.
 
 ## Overview
@@ -78,9 +76,10 @@ Run the application with:
 python OSIF_Revised.py
 ```
 - Use the GUI to select a data directory and file.
-- Set the initial frequency window (e.g., upper bound: 10000 Hz, lower bound: 10 Hz).
+- Set the initial frequency window (e.g., upper bound: 10000 Hz, lower bound: 10 Hz) and other parameters.
+- Click Simulate to see if the initial guess is fine. Modifying the initial parameters till the simulated line gets close to your original data.
 - Click the "Auto-Freq Window" button to automatically choose the optimal frequency window.
-- Then use the Fit or Simulate functions to perform the impedance analysis for water electrolysis MEA and calculate Rcl.
+- Then use the Fit to perform the impedance analysis for water electrolysis MEA and calculate Rcl.
 
 ## Data Format
 
