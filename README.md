@@ -9,11 +9,13 @@ This software is a Python-based GUI application (using Tkinter) for fitting elec
 ## Main Modifications
 
 1. **Simplified Model (Neglect Lwire):**  
-   In our EIS datasets no high-frequency inductive loop is observed. In the original OSIF model, the term  
+   In our EIS datasets no high-frequency inductive loop is observed. In the original OSIF model, the term
+   
    $L_{\text{wire}}(j\omega)^{\theta}$
-   is included. We have removed this term (by setting \(L_{\text{wire}} = 0\) and the exponent \(\theta = 0\)) so that the fitting is not misled by non-existent inductive behavior and the progress is significantly faster.
+   
+   is included. We have removed this term (by setting $\(L_{\text{wire}} = 0\)$ and the exponent $\(\theta = 0\))$ so that the fitting is not misled by non-existent inductive behavior and the progress is significantly faster.
 
-2. **Robust Error Estimation for Singular Matrices:**  
+3. **Robust Error Estimation for Singular Matrices:**  
    The original error estimation used the direct inverse of the Hessian approximation computed as follows:
    > **Original Code Snippet:**
    > 
@@ -46,13 +48,13 @@ This software is a Python-based GUI application (using Tkinter) for fitting elec
    > estVars = np.diag(cov_matrix * sigma_squared)
    > self.standardDeviation = np.sqrt(estVars)
    > ```
-   This modification ensures that the least-squares fitting process can proceed even if \(J^T J\) is singular, with a proper warning to the user.
+   This modification ensures that the least-squares fitting process can proceed even if %\(J^T J\)% is singular, with a proper warning to the user.
 
-3. **Auto Frequency-Window Function:**  
+4. **Auto Frequency-Window Function:**  
    We added an automated frequency-window selection routine. This function automatically searches for an optimal frequency range that minimizes the average percent standard error (SE) for the critical parameters (Rmem and Rcl).  
    - The routine first “chops” the raw data according to the initial frequency window set in the GUI.
    - It then tests candidate sub-windows (using a grid-search approach) and computes a cost metric defined as the average percent SE for Rmem and Rcl.
-   - A penalty factor is applied to candidate windows that use too few data points (since reducing \(N\) tends to increase SE due to fewer degrees of freedom).
+   - A penalty factor is applied to candidate windows that use too few data points (since reducing N tends to increase SE due to fewer degrees of freedom).
    - Finally, the candidate window with the lowest adjusted cost is selected and displayed—all in one click.
 
 ## Installation
