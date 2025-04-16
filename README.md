@@ -1,6 +1,6 @@
 # OSIF_Revised
 
-OSIF-Revised is a modified version of the [Open Source Impedance Fitter (OSIF)](https://github.com/NREL/OSIF) originally developed by NREL. This revision is customized for calculating the catalyst layer resistance (Rcl) for the Membrane Electrode Assembly (MEA) in water electrolysis applications. The main goals were to simplify the fitting model for our data and to enhance robustness during parameter error estimation.
+OSIF-Revised is a modified version of the [Open Source Impedance Fitter (OSIF)](https://github.com/NREL/OSIF) originally developed by NREL. This revision is customized for calculating the catalyst layer resistance (Rcl) for the Membrane Electrode Assembly (MEA) in water electrolysis applications. The main goals were to simplify the fitting model for our data and to enhance robustness during parameter error estimation. It's highly recommended to browse the original repositry before using this program. 
 
 ## Overview
 
@@ -9,11 +9,7 @@ This software is a Python-based GUI application (using Tkinter) for fitting elec
 ## Main Modifications
 
 1. **Simplified Model (Neglect Lwire):**  
-   In our EIS datasets no high-frequency inductive loop is observed. In the original OSIF model, the term
-   
-   $L_{\text{wire}}(j\omega)^{\theta}$
-   
-   is included. We have removed this term (by setting $\(L_{\text{wire}} = 0\)$ and the exponent $\(\theta = 0\))$ so that the fitting is not misled by non-existent inductive behavior and the progress is significantly faster.
+   In our EIS datasets no high-frequency inductive loop is observed. In the original OSIF model, the term $L_{\text{wire}}(j\omega)^{\theta}$ is included. We have removed this term (by setting $\(L_{\text{wire}} = 0\)$ and the exponent $\(\theta = 0\))$ so that the fitting is not misled by non-existent inductive behavior and the progress is significantly faster. For detalied explanation of models, see the pdf file "OSIF models". You can also find the model sources from [Open Source Impedance Fitter (OSIF)](https://github.com/NREL/OSIF)
 
 3. **Robust Error Estimation for Singular Matrices:**  
    The original error estimation used the direct inverse of the Hessian approximation computed as follows:
