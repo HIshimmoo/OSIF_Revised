@@ -36,7 +36,6 @@ class OSIF:
         master.title("Open Source Impedance Fitter (OSIF) Revised")
         master.grid()
         buttonFrame = Frame(master, pady=10)
-        buttonFrame = Frame(master, pady=10)
         InputFrame = Frame(master, padx=10)
         OutputFrame = Frame(master, padx=10)
         self.plotFrame = Frame(master, bg='blue')
@@ -405,22 +404,6 @@ class OSIF:
 
         print("Done loading file.")
 
-    def ChopFreq(self):
-        tempFreq = []
-        self.activeData.frequency = np.array([])
-        low_bound = float(self.frequencyRange.OE.get())
-        up_bound = float(self.frequencyRange.IE.get())
-        for freq in self.activeData.rawFrequency:
-            if (freq > low_bound) and (freq < up_bound):
-                tempFreq.append(freq)
-        self.activeData.frequency = np.array(tempFreq)
-        minIndex = self.activeData.rawFrequency.tolist().index(self.activeData.frequency[0])
-        maxIndex = self.activeData.rawFrequency.tolist().index(self.activeData.frequency[-1])
-        self.activeData.zPrime = self.activeData.rawzPrime[minIndex:maxIndex + 1]
-        self.activeData.ZdoublePrime = self.activeData.rawZdoublePrime[minIndex:maxIndex + 1]
-        self.activeData.zMod = self.activeData.rawzMod[minIndex:maxIndex + 1]
-        self.activeData.modZExperimentalComplex = self.activeData.rawmodZExperimentalComplex[minIndex:maxIndex + 1]
-        self.activeData.phase = self.activeData.rawPhase[minIndex:maxIndex + 1]
 
     def PerformSim(self):
         self.LoadSElectedFile()
@@ -428,7 +411,8 @@ class OSIF:
             tkMessageBox.showinfo("Error!", "No data file loaded or data is in incorrect format")
             return
         else:
-            self.ChopFreq()
+            if not self.ChopFreq():
+                return
             # We now fix Lwire and Theta to 0.
             params = [0,
                       float(self.Rmem.IE.get()),
@@ -452,7 +436,8 @@ class OSIF:
             tkMessageBox.showinfo("Error!", "No data file loaded or data is in incorrect format")
             return
         else:
-            self.ChopFreq()
+            if not self.ChopFreq():
+                return
             # Form free parameter vector: [Rmem, Rcl, Qdl, Phi]
             params = [float(self.Rmem.IE.get()),
                       float(self.Rcl.IE.get()),
@@ -810,12 +795,26 @@ class OSIF:
             return
         raw_freq = np.array(self.activeData.rawFrequency)
         mask = (raw_freq > low_bound) & (raw_freq < up_bound)
+        if not np.any(mask):
+            tkMessageBox.showwarning(
+                "Frequency Window Error",
+                "No data points fall within the selected frequency bounds.")
+            # Clear current chopped data
+            self.activeData.frequency = np.array([])
+            self.activeData.zPrime = np.array([])
+            self.activeData.ZdoublePrime = np.array([])
+            self.activeData.zMod = np.array([])
+            self.activeData.modZExperimentalComplex = np.array([])
+            self.activeData.phase = np.array([])
+            return False
+
         self.activeData.frequency = raw_freq[mask]
         self.activeData.zPrime = np.array(self.activeData.rawzPrime)[mask]
         self.activeData.ZdoublePrime = np.array(self.activeData.rawZdoublePrime)[mask]
         self.activeData.zMod = np.array(self.activeData.rawzMod)[mask]
         self.activeData.modZExperimentalComplex = np.array(self.activeData.rawmodZExperimentalComplex)[mask]
         self.activeData.phase = np.array(self.activeData.rawPhase)[mask]
+        return True
 
     def funcCostFree(self, free_params):
         """
@@ -952,7 +951,8 @@ class OSIF:
           5. Update the free parameter initial fields with the latest fit values.
         """
         # Step 1: Chop the data.
-        self.ChopFreq()
+        if not self.ChopFreq():
+            return
         chopped_freq = self.activeData.frequency.copy()
         npts = len(chopped_freq)
         if npts < 10:
@@ -995,7 +995,8 @@ class OSIF:
               .format(optimal_upper, optimal_lower, best_cost))
 
         # Step 4: Re-chop the data with new frequency bounds.
-        self.ChopFreq()
+        if not self.ChopFreq():
+            return
 
         # Step 5: Update free parameters by copying Fit values to Initial values.
         self.update_parameters()
