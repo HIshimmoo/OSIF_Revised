@@ -15,7 +15,11 @@ import tkMessageBox
 '''
 # end python 2 Tkinter import section
 
-import openpyxl
+try:
+    import openpyxl
+    HAVE_OPENPYXL = True
+except ImportError:
+    HAVE_OPENPYXL = False
 import matplotlib
 
 matplotlib.use('TkAgg')
@@ -395,7 +399,15 @@ class OSIF:
                 self.activeData.rawmodZExperimentalComplex.append(abs(z_complex))
             self.activeData.rawFrequency = np.array(self.activeData.rawFrequency)
         elif self.currentFileName.get().endswith('.xlsx') or self.currentFileName.get().endswith('.xls'):
-            xlsx = openpyxl.load_workbook(self.currentDataDir.IE.get() + self.currentFileName.get(), data_only=True)
+            if not HAVE_OPENPYXL:
+                tkMessageBox.showerror(
+                    "Missing Dependency",
+                    "openpyxl is required to load Excel files.\n"
+                    "Install it with 'pip install openpyxl'.")
+                return
+            xlsx = openpyxl.load_workbook(
+                self.currentDataDir.IE.get() + self.currentFileName.get(),
+                data_only=True)
             sheet1 = xlsx.active
             data = []
             for row in sheet1.iter_rows(values_only=True):
@@ -414,6 +426,14 @@ class OSIF:
         for i in range(len(self.activeData.rawzPrime)):
             self.activeData.rawPhase.append(
                 (180 / np.pi) * np.arctan(self.activeData.rawZdoublePrime[i] / self.activeData.rawzPrime[i]))
+
+        # Estimate Rmem from the Z' value where Z'' crosses zero
+        if len(self.activeData.rawzPrime) > 0:
+            # Find index where |Z''| is minimal (closest to zero)
+            idx_zero = int(np.argmin(np.abs(self.activeData.rawZdoublePrime)))
+            est_rmem = self.activeData.rawzPrime[idx_zero]
+            self.Rmem.IE.delete(0, END)
+            self.Rmem.IE.insert(0, "{:.6f}".format(est_rmem))
 
         print("Done loading file.")
 
@@ -452,18 +472,25 @@ class OSIF:
         else:
             if not self.ChopFreq():
                 return
-            # Form free parameter vector: [Rmem, Rcl, Qdl, Phi]
-            params = [float(self.Rmem.IE.get()),
+            # Form full parameter vector: [Lwire, Rmem, Rcl, Qdl, Phi, Theta]
+            params = [float(self.Lwire.IE.get()),
+                      float(self.Rmem.IE.get()),
                       float(self.Rcl.IE.get()),
                       float(self.Qdl.IE.get()),
-                      float(self.Phi.IE.get())]
-            # Use bounds: Rmem, Rcl, Qdl >=0, and Phi between 0 and 1.
-            finalOutput = scipy.optimize.least_squares(self.funcCost, params,
-                                                       bounds=([0, 0, 0, 0], [np.inf, np.inf, np.inf, 1]),
-                                                       max_nfev=50000, method='trf', xtol=1e-11,
-                                                       ftol=1e-11, gtol=1e-11, verbose=1)
-            # Reconstruct full parameter vector with Lwire=0, Theta=0.
-            self.finalParams = [0, finalOutput.x[0], finalOutput.x[1], finalOutput.x[2], finalOutput.x[3], 0]
+                      float(self.Phi.IE.get()),
+                      float(self.Theta.IE.get())]
+
+            rmem_init = params[1]
+            lower = [0, 0.9 * rmem_init, 0, 0, 0, 0]
+            upper = [np.inf, 1.1 * rmem_init, np.inf, np.inf, 1, 1]
+
+            finalOutput = scipy.optimize.least_squares(
+                self.funcCost, params,
+                bounds=(lower, upper),
+                max_nfev=50000, method='trf', xtol=1e-11,
+                ftol=1e-11, gtol=1e-11, verbose=1)
+
+            self.finalParams = list(finalOutput.x)
 
             # Estimate standard errors using Gauss-Newton approximation
             Jacob = finalOutput.jac
@@ -490,86 +517,96 @@ class OSIF:
             print("Fit to: " + self.activeData.dataNameNoExt)
             self.percentSigma = self.standardDeviation / finalOutput.x * 100
 
-            # Output fit results (only free parameters; Lwire and Theta remain 0)
+            # Output fit results
             self.Rmem.OE.config(state='normal')
             self.Rmem.OE.delete(0, END)
-            self.Rmem.OE.insert(0, '%5.8f' % (finalOutput.x[0]))
+            self.Rmem.OE.insert(0, '%5.8f' % (finalOutput.x[1]))
             self.Rmem.OE.config(state='readonly')
 
             self.Rcl.OE.config(state='normal')
             self.Rcl.OE.delete(0, END)
-            self.Rcl.OE.insert(0, '%5.8f' % (finalOutput.x[1]))
+            self.Rcl.OE.insert(0, '%5.8f' % (finalOutput.x[2]))
             self.Rcl.OE.config(state='readonly')
 
             self.Qdl.OE.config(state='normal')
             self.Qdl.OE.delete(0, END)
-            self.Qdl.OE.insert(0, '%5.8f' % (finalOutput.x[2]))
+            self.Qdl.OE.insert(0, '%5.8f' % (finalOutput.x[3]))
             self.Qdl.OE.config(state='readonly')
 
             self.Phi.OE.config(state='normal')
             self.Phi.OE.delete(0, END)
-            self.Phi.OE.insert(0, '%5.8f' % (finalOutput.x[3]))
+            self.Phi.OE.insert(0, '%5.8f' % (finalOutput.x[4]))
             self.Phi.OE.config(state='readonly')
 
             self.Lwire.OE.config(state='normal')
             self.Lwire.OE.delete(0, END)
-            self.Lwire.OE.insert(0, '0')
+            self.Lwire.OE.insert(0, '%5.8f' % (finalOutput.x[0]))
             self.Lwire.OE.config(state='readonly')
 
             self.Theta.OE.config(state='normal')
             self.Theta.OE.delete(0, END)
-            self.Theta.OE.insert(0, '0')
+            self.Theta.OE.insert(0, '%5.8f' % (finalOutput.x[5]))
             self.Theta.OE.config(state='readonly')
 
             self.Rmem.OESD.config(state='normal')
             self.Rmem.OESD.delete(0, END)
-            self.Rmem.OESD.insert(0, '%5.8f' % (self.standardDeviation[0]))
+            self.Rmem.OESD.insert(0, '%5.8f' % (self.standardDeviation[1]))
             self.Rmem.OESD.config(state='readonly')
 
             self.Rcl.OESD.config(state='normal')
             self.Rcl.OESD.delete(0, END)
-            self.Rcl.OESD.insert(0, '%5.8f' % (self.standardDeviation[1]))
+            self.Rcl.OESD.insert(0, '%5.8f' % (self.standardDeviation[2]))
             self.Rcl.OESD.config(state='readonly')
 
             self.Qdl.OESD.config(state='normal')
             self.Qdl.OESD.delete(0, END)
-            self.Qdl.OESD.insert(0, '%5.8f' % (self.standardDeviation[2]))
+            self.Qdl.OESD.insert(0, '%5.8f' % (self.standardDeviation[3]))
             self.Qdl.OESD.config(state='readonly')
 
             self.Phi.OESD.config(state='normal')
             self.Phi.OESD.delete(0, END)
-            self.Phi.OESD.insert(0, '%5.8f' % (self.standardDeviation[3]))
+            self.Phi.OESD.insert(0, '%5.8f' % (self.standardDeviation[4]))
             self.Phi.OESD.config(state='readonly')
 
             self.Lwire.OESD.config(state='normal')
             self.Lwire.OESD.delete(0, END)
-            self.Lwire.OESD.insert(0, '0')
+            self.Lwire.OESD.insert(0, '%5.8f' % (self.standardDeviation[0]))
             self.Lwire.OESD.config(state='readonly')
 
             self.Theta.OESD.config(state='normal')
             self.Theta.OESD.delete(0, END)
-            self.Theta.OESD.insert(0, '0')
+            self.Theta.OESD.insert(0, '%5.8f' % (self.standardDeviation[5]))
             self.Theta.OESD.config(state='readonly')
 
             self.Rmem.OESDP.config(state='normal')
             self.Rmem.OESDP.delete(0, END)
-            self.Rmem.OESDP.insert(0, '%5.4f' % (self.percentSigma[0]))
+            self.Rmem.OESDP.insert(0, '%5.4f' % (self.percentSigma[1]))
             self.Rmem.OESDP.config(state='readonly')
 
             self.Rcl.OESDP.config(state='normal')
             self.Rcl.OESDP.delete(0, END)
-            self.Rcl.OESDP.insert(0, '%5.4f' % (self.percentSigma[1]))
+            self.Rcl.OESDP.insert(0, '%5.4f' % (self.percentSigma[2]))
             self.Rcl.OESDP.config(state='readonly')
 
             self.Qdl.OESDP.config(state='normal')
             self.Qdl.OESDP.delete(0, END)
-            self.Qdl.OESDP.insert(0, '%5.4f' % (self.percentSigma[2]))
+            self.Qdl.OESDP.insert(0, '%5.4f' % (self.percentSigma[3]))
             self.Qdl.OESDP.config(state='readonly')
 
             self.Phi.OESDP.config(state='normal')
             self.Phi.OESDP.delete(0, END)
-            self.Phi.OESDP.insert(0, '%5.4f' % (self.percentSigma[3]))
+            self.Phi.OESDP.insert(0, '%5.4f' % (self.percentSigma[4]))
             self.Phi.OESDP.config(state='readonly')
+
+            self.Lwire.OESDP.config(state='normal')
+            self.Lwire.OESDP.delete(0, END)
+            self.Lwire.OESDP.insert(0, '%5.4f' % (self.percentSigma[0]))
+            self.Lwire.OESDP.config(state='readonly')
+
+            self.Theta.OESDP.config(state='normal')
+            self.Theta.OESDP.delete(0, END)
+            self.Theta.OESDP.insert(0, '%5.4f' % (self.percentSigma[5]))
+            self.Theta.OESDP.config(state='readonly')
 
             self.avgResPer.AVGRESPER.config(state='normal')
             self.avgResPer.AVGRESPER.delete(0, END)
@@ -694,7 +731,8 @@ class OSIF:
         dataOutFile.write("\n# Fit Results:\n")
         dataOutFile.write("# Rmem = %5.8f\n# Rcl = %5.8f\n# Qdl = %5.8f\n# phi = %5.8f\n" %
                           (self.finalParams[1], self.finalParams[2], self.finalParams[3], self.finalParams[4]))
-        dataOutFile.write("# Lwire = 0\n# Theta = 0\n")
+        dataOutFile.write("# Lwire = %5.8f\n# Theta = %5.8f\n" %
+                          (self.finalParams[0], self.finalParams[5]))
         dataOutFile.write("# Avg. |Z| residual %% = " + str(self.resPercentData))
         dataOutFile.close()
         print("Saved fitted data in: " + self.currentDataDir.IE.get() + self.activeData.dataNameNoExt + '_fit.txt')
@@ -846,14 +884,11 @@ class OSIF:
         return True
 
     def funcCostFree(self, free_params):
+        """Return cost using the full parameter vector.
+
+        free_params = [Lwire, Rmem, Rcl, Qdl, Phi, Theta]
         """
-        Wrapper that uses only the free parameters:
-          free_params = [Rmem, Rcl, Qdl, Phi]
-        Reconstruct the full parameter vector as [0, Rmem, Rcl, Qdl, Phi, 0]
-        (with Lwire and Theta fixed to 0) and return the cost computed by funcCost.
-        """
-        full_params = [0] + list(free_params) + [0]
-        return self.funcCost(full_params)
+        return self.funcCost(free_params)
 
     def fit_with_free_params(self):
         """
@@ -862,14 +897,21 @@ class OSIF:
         standard error (SE) for Rmem and Rcl.
         """
         free_params = [
+            float(self.Lwire.IE.get()),
             float(self.Rmem.IE.get()),
             float(self.Rcl.IE.get()),
             float(self.Qdl.IE.get()),
-            float(self.Phi.IE.get())
+            float(self.Phi.IE.get()),
+            float(self.Theta.IE.get())
         ]
+
+        rmem_init = free_params[1]
+        lower = [0, 0.9 * rmem_init, 0, 0, 0, 0]
+        upper = [np.inf, 1.1 * rmem_init, np.inf, np.inf, 1, 1]
+
         result = scipy.optimize.least_squares(
             self.funcCostFree, free_params,
-            bounds=([0, 0, 0, 0], [np.inf, np.inf, np.inf, 1]),
+            bounds=(lower, upper),
             max_nfev=20000, method='trf',
             xtol=1e-11, ftol=1e-11, gtol=1e-11, verbose=0
         )
@@ -882,8 +924,8 @@ class OSIF:
         estVars = np.diag(cov * s2)
         std = np.sqrt(estVars)
         percentSE = std / result.x * 100  # percent SE for free parameters
-        # Cost is the average percent SE for Rmem (index 0) and Rcl (index 1)
-        cost = (percentSE[0] + percentSE[1]) / 2.0
+        # Cost is the average percent SE for Rmem (index 1) and Rcl (index 2)
+        cost = (percentSE[1] + percentSE[2]) / 2.0
         return cost
 
     def fit_chopped_window(self, upper_idx, lower_idx, chopped_freq, N_initial):
@@ -943,14 +985,21 @@ class OSIF:
 
     def get_fit_cost_and_params(self):
         free_params = [
+            float(self.Lwire.IE.get()),
             float(self.Rmem.IE.get()),
             float(self.Rcl.IE.get()),
             float(self.Qdl.IE.get()),
-            float(self.Phi.IE.get())
+            float(self.Phi.IE.get()),
+            float(self.Theta.IE.get())
         ]
+
+        rmem_init = free_params[1]
+        lower = [0, 0.9 * rmem_init, 0, 0, 0, 0]
+        upper = [np.inf, 1.1 * rmem_init, np.inf, np.inf, 1, 1]
+
         result = scipy.optimize.least_squares(
             self.funcCostFree, free_params,
-            bounds=([0, 0, 0, 0], [np.inf, np.inf, np.inf, 1]),
+            bounds=(lower, upper),
             max_nfev=20000, method='trf',
             xtol=1e-11, ftol=1e-11, gtol=1e-11, verbose=0
         )
@@ -965,7 +1014,7 @@ class OSIF:
         estVars = np.diag(cov * s2)
         std = np.sqrt(estVars)
         percentSE = std / result.x * 100
-        cost = (percentSE[0] + percentSE[1]) / 2.0
+        cost = (percentSE[1] + percentSE[2]) / 2.0
         return cost, result.x
 
     def auto_freq_window_grid_search(self):
@@ -1033,7 +1082,7 @@ class OSIF:
     def update_parameters(self):
         """
         Copies the current Fit Values (OE fields) into the Initial Values (IE fields)
-        for the free parameters Rmem, Rcl, Qdl, and Phi.
+        for all fitting parameters.
         """
         # It is a good idea to print out the values for debugging purposes.
         try:
@@ -1064,6 +1113,20 @@ class OSIF:
             self.Phi.IE.config(state="normal")
             self.Phi.IE.delete(0, END)
             self.Phi.IE.insert(0, new_Phi)
+
+            # Lwire
+            new_Lwire = self.Lwire.OE.get()
+            print("Updating Lwire: reading from OE =", new_Lwire)
+            self.Lwire.IE.config(state="normal")
+            self.Lwire.IE.delete(0, END)
+            self.Lwire.IE.insert(0, new_Lwire)
+
+            # Theta
+            new_Theta = self.Theta.OE.get()
+            print("Updating Theta: reading from OE =", new_Theta)
+            self.Theta.IE.config(state="normal")
+            self.Theta.IE.delete(0, END)
+            self.Theta.IE.insert(0, new_Theta)
 
             tkMessageBox.showinfo("Update Parameters",
                                   "Fit Values have been copied into Initial Values.")

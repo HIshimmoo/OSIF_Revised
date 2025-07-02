@@ -6,10 +6,14 @@ OSIF-Revised is a modified version of the [Open Source Impedance Fitter (OSIF)](
 
 This software is a Python-based GUI application (using Tkinter) for fitting electrochemical impedance spectroscopy (EIS) data. The revised code focuses on accurately determining Rcl for water electrolysis MEA while streamlining the model and addressing certain numerical issues.
 
+## Dependencies
+
+All required Python packages are listed in `requirements.txt`. Run `./setup.sh` to install them.
+
 ## Main Modifications
 
-1. **Simplified Model (Ignore Lwire during Fit):**
-   Our EIS datasets show no high-frequency inductive loop. Lwire and its exponent $\theta$ are therefore ignored when fitting (both set to zero), reducing the number of parameters. However, the GUI still allows you to specify Lwire and $\theta$ for simulation purposes. For detailed explanation of models, see the pdf file "OSIF models". You can also find the model sources from [Open Source Impedance Fitter (OSIF)](https://github.com/NREL/OSIF)
+1. **Rmem Pre-estimation and Inductive Elements:**
+   When a data file is loaded the program automatically estimates $R_{mem}$ from the Nyquist plot by taking the real impedance value where the imaginary part crosses zero. During fitting this resistance is constrained to vary only $\pm10\%$ around the estimated value. The inductive term $L_{wire}$ and its fractional exponent $\theta$ are now included as fitting parameters.
 
 2. **Robust Error Estimation for Singular Matrices:**  
    The original error estimation used the direct inverse of the Hessian approximation computed as follows:
@@ -54,7 +58,7 @@ This software is a Python-based GUI application (using Tkinter) for fitting elec
    - Finally, the candidate window with the lowest adjusted cost is selected and displayed—all in one click.
   
 4. **Update Parameter Function**
-   - We can now update all the initial values by the fitted values by clicking "Update parameters"
+   - We can now update all the initial values (including $L_{wire}$ and $\theta$) by the fitted values by clicking "Update parameters"
    - The Auto-Freq also updates the initial values during iteration.
 
 ## Data Format
@@ -64,7 +68,12 @@ This software is a Python-based GUI application (using Tkinter) for fitting elec
   
 ## Usage
 
-Run the application with:
+Install Python dependencies first (requires internet access):
+```bash
+./setup.sh
+```
+
+Then run the application with:
 ```bash
 python OSIF_Revised.py
 ```
