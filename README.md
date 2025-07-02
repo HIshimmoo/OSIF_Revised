@@ -8,8 +8,8 @@ This software is a Python-based GUI application (using Tkinter) for fitting elec
 
 ## Main Modifications
 
-1. **Simplified Model (Neglect Lwire):**  
-   In our EIS datasets no high-frequency inductive loop is observed. In the original OSIF model, the term $L_{\text{wire}}(j\omega)^{\theta}$ is included. We have removed this term (by setting $\(L_{\text{wire}} = 0\)$ and the exponent $\(\theta = 0\))$ so that the fitting is not misled by non-existent inductive behavior and the progress is significantly faster. For detalied explanation of models, see the pdf file "OSIF models". You can also find the model sources from [Open Source Impedance Fitter (OSIF)](https://github.com/NREL/OSIF)
+1. **Simplified Model (Ignore Lwire during Fit):**
+   Our EIS datasets show no high-frequency inductive loop. Lwire and its exponent $\theta$ are therefore ignored when fitting (both set to zero), reducing the number of parameters. However, the GUI still allows you to specify Lwire and $\theta$ for simulation purposes. For detailed explanation of models, see the pdf file "OSIF models". You can also find the model sources from [Open Source Impedance Fitter (OSIF)](https://github.com/NREL/OSIF)
 
 2. **Robust Error Estimation for Singular Matrices:**  
    The original error estimation used the direct inverse of the Hessian approximation computed as follows:

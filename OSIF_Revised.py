@@ -118,6 +118,19 @@ class OSIF:
         self.Phi.IE.grid(row=5, column=initValueColumn)
         self.Phi.IE.insert(0, "0.9")
 
+        # Additional inputs for simulation only (ignored during fitting)
+        Label(InputFrame, text="Lwire:", font=labelFont).grid(row=6, column=varNameColumn, sticky=E)
+        Label(InputFrame, text="[H·cm²]", font=labelFont).grid(row=6, column=unitColumn, sticky=W)
+        self.Lwire.IE = Entry(InputFrame, width=10, font=entryFont)
+        self.Lwire.IE.grid(row=6, column=initValueColumn)
+        self.Lwire.IE.insert(0, "0.0")
+
+        Label(InputFrame, text="Theta:", font=labelFont).grid(row=7, column=varNameColumn, sticky=E)
+        Label(InputFrame, text="[ - ]", font=labelFont).grid(row=7, column=unitColumn, sticky=W)
+        self.Theta.IE = Entry(InputFrame, width=10, font=entryFont)
+        self.Theta.IE.grid(row=7, column=initValueColumn)
+        self.Theta.IE.insert(0, "0.0")
+
         # Remove Cell Area and Catalyst Loading entirely; they are no longer needed.
 
         Label(InputFrame, text="Upper Frequency bound:", font=labelFont).grid(row=8, column=varNameColumn, sticky=E)
@@ -293,7 +306,7 @@ class OSIF:
 
     def openModelInfo(self):
         if self.model_selection.get() == self.eis_model[0]:
-            print("Using Transmission Line model (with Lwire and Theta fixed to 0).")
+            print("Using Transmission Line model (Lwire and Theta ignored during fit).")
             webbrowser.open("https://iopscience.iop.org/article/10.1149/2.0361506jes")
         elif self.model_selection.get() == self.eis_model[1]:
             print("1-D linear diffusion model selected.")
@@ -411,15 +424,16 @@ class OSIF:
             tkMessageBox.showinfo("Error!", "No data file loaded or data is in incorrect format")
             return
         else:
-            if not self.ChopFreq():
-                return
-            # We now fix Lwire and Theta to 0.
-            params = [0,
+
+            self.ChopFreq()
+            # Use user-specified Lwire and Theta for simulation.
+            params = [float(self.Lwire.IE.get()),
                       float(self.Rmem.IE.get()),
                       float(self.Rcl.IE.get()),
                       float(self.Qdl.IE.get()),
                       float(self.Phi.IE.get()),
-                      0]
+                      float(self.Theta.IE.get())]
+
             self.CreateFigures(params, 'sim')
             print("Model Selection Made:", self.model_selection.get())
             simResiduals = self.funcCost(params)
@@ -691,9 +705,12 @@ class OSIF:
 
     # The cost function returns the combined error (real and imaginary parts)
     def funcCost(self, params):
-        # Reconstruct the full parameter vector:
-        # Full params = [0, Rmem, Rcl, Qdl, Phi, 0]
-        full_params = [0, params[0], params[1], params[2], params[3], 0]
+        """Compute residuals for least-squares fitting or simulation."""
+        # Allow both 4-parameter (fit) and 6-parameter (simulation) vectors.
+        if len(params) == 4:
+            full_params = [0, params[0], params[1], params[2], params[3], 0]
+        else:
+            full_params = params
         if self.model_selection.get() == self.eis_model[0]:
             diff = (self.funcreal(full_params) - np.array(self.activeData.zPrime)) ** 2 + \
                    (self.funcImg(full_params) - np.array(self.activeData.ZdoublePrime)) ** 2
@@ -709,61 +726,73 @@ class OSIF:
         else:
             print("Error in Model Selection")
 
-    # Model functions for the Transmission Line (with inductive term removed)
+    # Model functions for the Transmission Line (optionally including inductive term)
     def funcreal(self, param):
+        Lwire = param[0]
         Rmem = param[1]
         Rcl = param[2]
         Qdl = param[3]
         Phi = param[4]
+        Theta = param[5]
         omega = 1j * 2 * np.pi * self.activeData.frequency
-        Z = Rmem + np.sqrt(Rcl / (Qdl * (omega ** Phi))) * self.JPcoth(np.sqrt(Rcl * Qdl * (omega ** Phi)))
+        Z = Lwire * (omega ** Theta) + Rmem + np.sqrt(Rcl / (Qdl * (omega ** Phi))) * self.JPcoth(np.sqrt(Rcl * Qdl * (omega ** Phi)))
         return np.real(Z)
 
     def funcImg(self, param):
+        Lwire = param[0]
         Rmem = param[1]
         Rcl = param[2]
         Qdl = param[3]
         Phi = param[4]
+        Theta = param[5]
         omega = 1j * 2 * np.pi * self.activeData.frequency
-        Z = Rmem + np.sqrt(Rcl / (Qdl * (omega ** Phi))) * self.JPcoth(np.sqrt(Rcl * Qdl * (omega ** Phi)))
+        Z = Lwire * (omega ** Theta) + Rmem + np.sqrt(Rcl / (Qdl * (omega ** Phi))) * self.JPcoth(np.sqrt(Rcl * Qdl * (omega ** Phi)))
         return np.imag(Z)
 
     # 1-D Linear Diffusion model functions
     def funcreal_l(self, param):
+        Lwire = param[0]
         Rmem = param[1]
         Rcl = param[2]
         Qdl = param[3]
         Phi = param[4]
+        Theta = param[5]
         omega = 1j * 2 * np.pi * self.activeData.frequency
-        Z = Rmem + Rcl * (Rcl * (Qdl * (omega ** Phi))) ** (-0.5) * self.JPcoth(np.sqrt(Rcl * Qdl * (omega ** Phi)))
+        Z = Lwire * (omega ** Theta) + Rmem + Rcl * (Rcl * (Qdl * (omega ** Phi))) ** (-0.5) * self.JPcoth(np.sqrt(Rcl * Qdl * (omega ** Phi)))
         return np.real(Z)
 
     def funcImg_l(self, param):
+        Lwire = param[0]
         Rmem = param[1]
         Rcl = param[2]
         Qdl = param[3]
         Phi = param[4]
+        Theta = param[5]
         omega = 1j * 2 * np.pi * self.activeData.frequency
-        Z = Rmem + Rcl * (Rcl * (Qdl * (omega ** Phi))) ** (-0.5) * self.JPcoth(np.sqrt(Rcl * Qdl * (omega ** Phi)))
+        Z = Lwire * (omega ** Theta) + Rmem + Rcl * (Rcl * (Qdl * (omega ** Phi))) ** (-0.5) * self.JPcoth(np.sqrt(Rcl * Qdl * (omega ** Phi)))
         return np.imag(Z)
 
     # 1-D Spherical Diffusion model functions
     def funcreal_s(self, param):
+        Lwire = param[0]
         Rmem = param[1]
         Rcl = param[2]
         Qdl = param[3]
         Phi = param[4]
+        Theta = param[5]
         omega = 1j * 2 * np.pi * self.activeData.frequency
-        Z = Rmem + Rcl / (np.sqrt(Rcl * Qdl * (omega ** Phi)) * self.JPcoth(np.sqrt(Rcl * Qdl * (omega ** Phi))) - 1)
+        Z = Lwire * (omega ** Theta) + Rmem + Rcl / (np.sqrt(Rcl * Qdl * (omega ** Phi)) * self.JPcoth(np.sqrt(Rcl * Qdl * (omega ** Phi))) - 1)
         return np.real(Z)
 
     def funcImg_s(self, param):
+        Lwire = param[0]
         Rmem = param[1]
         Rcl = param[2]
         Qdl = param[3]
         Phi = param[4]
+        Theta = param[5]
         omega = 1j * 2 * np.pi * self.activeData.frequency
-        Z = Rmem + Rcl / (np.sqrt(Rcl * Qdl * (omega ** Phi)) * self.JPcoth(np.sqrt(Rcl * Qdl * (omega ** Phi))) - 1)
+        Z = Lwire * (omega ** Theta) + Rmem + Rcl / (np.sqrt(Rcl * Qdl * (omega ** Phi)) * self.JPcoth(np.sqrt(Rcl * Qdl * (omega ** Phi))) - 1)
         return np.imag(Z)
 
     def funcAbs(self, param):
